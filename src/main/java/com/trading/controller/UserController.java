@@ -124,6 +124,6 @@ public class UserController {
             apiResponse.setMessage("Password updated successfully.");
             return ResponseEntity.ok(apiResponse);
         }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid OTP");
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid Otp reset password");
     }
 }
