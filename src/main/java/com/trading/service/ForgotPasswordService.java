@@ -1,12 +1,19 @@
 package com.trading.service;
 
 import com.trading.domain.VerificationType;
-import com.trading.modal.ForgotPassword;
+import com.trading.modal.ForgotPasswordToken;
 import com.trading.modal.User;
 
 public interface ForgotPasswordService {
-    ForgotPassword createForgotPassword(User user, String id, String otp, VerificationType verificationCode, String sendTo);
-    ForgotPassword findById(String id);
-    ForgotPassword findByUser(Long userId);
-    void deleteForgotPassword(ForgotPassword forgotPassword);
+
+    ForgotPasswordToken createToken(User user, String id, String otp,
+                                    VerificationType verificationType, String sendTo);
+
+    ForgotPasswordToken findById(String id);
+
+    ForgotPasswordToken findByUser(Long userId);
+
+    void deleteToken(ForgotPasswordToken token);
+
+    boolean verifyToken(ForgotPasswordToken token,String otp);
 }
