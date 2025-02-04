@@ -13,33 +13,40 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class JwtProvider {
-    private static final SecretKey secretKey = Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-    private static final long EXPIRATION_TIME = 24 * 60 * 60 * 1000;
 
-    public static String generateToken(Authentication authentication) {
-        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+    private static SecretKey key=Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
+
+    public static String generateToken(Authentication auth) {
+        Collection<? extends GrantedAuthority> authorities = auth.getAuthorities();
         String roles = populateAuthorities(authorities);
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + EXPIRATION_TIME);
-        return Jwts.builder()
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .claim("email", authentication.getName())
-                .claim("authorities", roles)
-                .signWith(secretKey)
-                .compact();
-    }
-public static String getEmailFromToken(String token) {
-        token = token.substring(7);
-    Claims claims = Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token).getBody();
-    return String.valueOf(claims.get("email"));
-}
 
-    private static String populateAuthorities(Collection<? extends GrantedAuthority> authorities) {
-        Set<String> authoritiesSet = new HashSet<>();
-        for (GrantedAuthority grantedAuthority : authorities) {
-            authoritiesSet.add(grantedAuthority.getAuthority());
-        }
-        return authoritiesSet.toString();
+        String jwt=Jwts.builder()
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(new Date().getTime()+86400000))
+                .claim("email",auth.getName())
+                .claim("authorities", roles)
+                .signWith(key)
+                .compact();
+        return jwt;
+
     }
+
+    public static String getEmailFromJwtToken(String jwt) {
+        jwt=jwt.substring(7);
+
+        Claims claims=Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(jwt).getBody();
+        String email=String.valueOf(claims.get("email"));
+
+        return email;
+    }
+
+    public static String populateAuthorities(Collection<? extends GrantedAuthority> collection) {
+        Set<String> auths=new HashSet<>();
+
+        for(GrantedAuthority authority:collection) {
+            auths.add(authority.getAuthority());
+        }
+        return String.join(",",auths);
+    }
+
 }
