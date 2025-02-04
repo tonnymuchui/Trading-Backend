@@ -1,129 +1,203 @@
 package com.trading.controller;
 
 import com.trading.domain.VerificationType;
-import com.trading.modal.ForgotPassword;
+import com.trading.exception.UserException;
+import com.trading.modal.ForgotPasswordToken;
 import com.trading.modal.User;
 import com.trading.modal.VerificationCode;
-import com.trading.request.ForgotPasswordRequest;
 import com.trading.request.ResetPasswordRequest;
+import com.trading.request.UpdatePasswordRequest;
 import com.trading.response.ApiResponse;
 import com.trading.response.AuthResponse;
 import com.trading.service.EmailService;
 import com.trading.service.ForgotPasswordService;
 import com.trading.service.UserService;
-import com.trading.service.VerificationCodeService;
+import com.trading.service.VerificationService;
 import com.trading.utils.OtpUtils;
-import jakarta.mail.MessagingException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
+
 @RestController
-@RequestMapping("/api/users")
-@RequiredArgsConstructor
-@Slf4j
 public class UserController {
 
-    private final UserService userService;
-    private final EmailService emailService;
-    private final VerificationCodeService verificationCodeService;
-    private final ForgotPasswordService forgotPasswordService;
+    @Autowired
+    private UserService userService;
 
-    @GetMapping("/profile")
-    public ResponseEntity<User> getUserProfile(@RequestHeader("Authorization") String token) {
-        log.info("Fetching user profile for token: {}", token);
-        User user = userService.findUserByJwtToken(token);
-        return ResponseEntity.ok(user);
+    @Autowired
+    private VerificationService verificationService;
+
+    @Autowired
+    private ForgotPasswordService forgotPasswordService;
+
+    @Autowired
+    private EmailService emailService;
+
+
+    @GetMapping("/api/users/profile")
+    public ResponseEntity<User> getUserProfileHandler(
+            @RequestHeader("Authorization") String jwt) throws UserException {
+
+        User user = userService.findUserProfileByJwt(jwt);
+        user.setPassword(null);
+
+        return new ResponseEntity<>(user, HttpStatus.ACCEPTED);
     }
 
-    @PostMapping("/verification/{verificationType}/send-otp")
-    public ResponseEntity<String> sendVerificationOtp(
-            @RequestHeader("Authorization") String token,
-            @PathVariable VerificationType verificationType) throws MessagingException {
-        log.info("Sending verification OTP for token: {}, verificationType: {}", token, verificationType);
-        User user = userService.findUserByJwtToken(token);
+    @GetMapping("/api/users/{userId}")
+    public ResponseEntity<User> findUserById(
+            @PathVariable Long userId,
+            @RequestHeader("Authorization") String jwt) throws UserException {
 
-        // Fetch or create new verification code
-        VerificationCode verificationCode = verificationCodeService.getVerificationCodeByUser(user.getId());
-        if (verificationCode == null) {
-            verificationCode = verificationCodeService.sendVerificationCode(user, verificationType);
-            log.info("Generated new verification code: {}", verificationCode.getOtp());
-        }
+        User user = userService.findUserById(userId);
+        user.setPassword(null);
 
-        // Send email if verification type is EMAIL
-        if (verificationType == VerificationType.EMAIL) {
-            emailService.sendVerificationEmail(user.getEmail(), verificationCode.getOtp());
-            log.info("Verification email sent to: {}", user.getEmail());
-        }
-
-        return ResponseEntity.ok("Verification OTP sent successfully.");
+        return new ResponseEntity<>(user, HttpStatus.ACCEPTED);
     }
 
-    @PatchMapping("/enable-two-factor/verify-otp/{otp}")
-    public ResponseEntity<User> enableTwoFactorAuthentication(
-            @RequestHeader("Authorization") String token, @PathVariable String otp) {
-        log.info("Enabling two-factor authentication for token: {}, OTP: {}", token, otp);
-        User user = userService.findUserByJwtToken(token);
-        VerificationCode verificationCode = verificationCodeService.getVerificationCodeByUser(user.getId());
+    @GetMapping("/api/users/email/{email}")
+    public ResponseEntity<User> findUserByEmail(
+            @PathVariable String email,
+            @RequestHeader("Authorization") String jwt) throws UserException {
 
-        if (verificationCode == null || !verificationCode.getOtp().equals(otp)) {
-            log.warn("Invalid OTP provided for user ID: {}", user.getId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid OTP");
+        User user = userService.findUserByEmail(email);
+
+        return new ResponseEntity<>(user, HttpStatus.ACCEPTED);
+    }
+
+    @PatchMapping("/api/users/enable-two-factor/verify-otp/{otp}")
+    public ResponseEntity<User> enabledTwoFactorAuthentication(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable String otp
+    ) throws Exception {
+
+
+        User user = userService.findUserProfileByJwt(jwt);
+
+
+        VerificationCode verificationCode = verificationService.findUsersVerification(user);
+
+        String sendTo=verificationCode.getVerificationType().equals(VerificationType.EMAIL)?verificationCode.getEmail():verificationCode.getMobile();
+
+
+        boolean isVerified = verificationService.VerifyOtp(otp, verificationCode);
+
+        if (isVerified) {
+            User updatedUser = userService.enabledTwoFactorAuthentication(verificationCode.getVerificationType(),
+                    sendTo,user);
+            verificationService.deleteVerification(verificationCode);
+            return ResponseEntity.ok(updatedUser);
         }
+        throw new Exception("wrong otp");
 
-        String contact = verificationCode.getVerificationType() == VerificationType.EMAIL
-                ? verificationCode.getEmail()
-                : verificationCode.getMobileNumber();
-
-        User updatedUser = userService.enableTwoFactorAuthentication(verificationCode.getVerificationType(), contact, user);
-        verificationCodeService.deleteVerificationCodeById(verificationCode);
-        log.info("Two-factor authentication enabled for user ID: {}", user.getId());
-
-        return ResponseEntity.ok(updatedUser);
     }
 
 
-    @PostMapping("/auth/users/reset-password/send-otp")
-    public ResponseEntity<AuthResponse> sendForgotPasswordOtp(
-            @RequestBody ForgotPasswordRequest forgotPasswordRequest) throws MessagingException {
-        log.info("Sending forgot  OTP for token: {}, verificationType: {}", forgotPasswordRequest.getSendTo(), forgotPasswordRequest);
-        User user = userService.findUserByEmail(forgotPasswordRequest.getSendTo());
-        String otp = OtpUtils.generateOTP();
-        UUID uuid = UUID.randomUUID();
-        String id = uuid.toString();
-        ForgotPassword forgotPassword = forgotPasswordService.findByUser(user.getId());
-        if (forgotPassword == null) {
-            forgotPassword = forgotPasswordService.createForgotPassword(user,id,otp,forgotPasswordRequest.getVerificationType(), forgotPasswordRequest.getSendTo());
-        }
-        if (forgotPasswordRequest.getVerificationType().equals(VerificationType.EMAIL)) {
-            emailService.sendVerificationEmail(user.getEmail(), forgotPassword.getOtp());
-        }
-        AuthResponse authResponse = new AuthResponse();
-        authResponse.setSession(forgotPassword.getId());
-        authResponse.setMessage("OTP Rest sent successfully.");
-        return ResponseEntity.ok(authResponse);
-    }
 
     @PatchMapping("/auth/users/reset-password/verify-otp")
-    public ResponseEntity<ApiResponse> resetPasswordOtp(
-            @RequestHeader("Authorization") String token,
-            @RequestParam ResetPasswordRequest resetPasswordRequest,
-            @RequestParam String id) throws MessagingException {
-        log.info("Enabling reset password for token: {}, OTP: {}",resetPasswordRequest, id);
-        ForgotPassword forgotPassword =forgotPasswordService.findById(id);
+    public ResponseEntity<ApiResponse> resetPassword(
+            @RequestParam String id,
+            @RequestBody ResetPasswordRequest req
+    ) throws Exception {
+        ForgotPasswordToken forgotPasswordToken=forgotPasswordService.findById(id);
 
-        boolean isVerified = forgotPassword.getOtp().equals(resetPasswordRequest.getOtp());
+        boolean isVerified = forgotPasswordService.verifyToken(forgotPasswordToken,req.getOtp());
+
         if (isVerified) {
-            userService.updatePassword(forgotPassword.getUser(),resetPasswordRequest.getPassword());
-            ApiResponse apiResponse = new ApiResponse();
-            apiResponse.setMessage("Password updated successfully.");
+
+            userService.updatePassword(forgotPasswordToken.getUser(),req.getPassword());
+            ApiResponse apiResponse=new ApiResponse();
+            apiResponse.setMessage("password updated successfully");
             return ResponseEntity.ok(apiResponse);
         }
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid Otp reset password");
+        throw new Exception("wrong otp");
+
     }
+
+    @PostMapping("/auth/users/reset-password/send-otp")
+    public ResponseEntity<AuthResponse> sendUpdatePasswordOTP(
+            @RequestBody UpdatePasswordRequest req)
+            throws Exception {
+
+        User user = userService.findUserByEmail(req.getSendTo());
+        String otp= OtpUtils.generateOTP();
+        UUID uuid = UUID.randomUUID();
+        String id = uuid.toString();
+
+        ForgotPasswordToken token = forgotPasswordService.findByUser(user.getId());
+
+        if(token==null){
+            token=forgotPasswordService.createToken(
+                    user,id,otp,req.getVerificationType(), req.getSendTo()
+            );
+        }
+
+        if(req.getVerificationType().equals(VerificationType.EMAIL)){
+            emailService.sendVerificationOtpEmail(
+                    user.getEmail(),
+                    token.getOtp()
+            );
+        }
+
+        AuthResponse res=new AuthResponse();
+        res.setSession(token.getId());
+        res.setMessage("Password Reset OTP sent successfully.");
+
+        return ResponseEntity.ok(res);
+
+    }
+
+    @PatchMapping("/api/users/verification/verify-otp/{otp}")
+    public ResponseEntity<User> verifyOTP(
+            @RequestHeader("Authorization") String jwt,
+            @PathVariable String otp
+    ) throws Exception {
+
+
+        User user = userService.findUserProfileByJwt(jwt);
+
+
+        VerificationCode verificationCode = verificationService.findUsersVerification(user);
+
+
+        boolean isVerified = verificationService.VerifyOtp(otp, verificationCode);
+
+        if (isVerified) {
+            verificationService.deleteVerification(verificationCode);
+            User verifiedUser = userService.verifyUser(user);
+            return ResponseEntity.ok(verifiedUser);
+        }
+        throw new Exception("wrong otp");
+
+    }
+
+    @PostMapping("/api/users/verification/{verificationType}/send-otp")
+    public ResponseEntity<String> sendVerificationOTP(
+            @PathVariable VerificationType verificationType,
+            @RequestHeader("Authorization") String jwt)
+            throws Exception {
+
+        User user = userService.findUserProfileByJwt(jwt);
+
+        VerificationCode verificationCode = verificationService.findUsersVerification(user);
+
+        if(verificationCode == null) {
+            verificationCode = verificationService.sendVerificationOTP(user,verificationType);
+        }
+
+
+        if(verificationType.equals(VerificationType.EMAIL)){
+            emailService.sendVerificationOtpEmail(user.getEmail(), verificationCode.getOtp());
+        }
+
+
+
+        return ResponseEntity.ok("Verification OTP sent successfully.");
+
+    }
+
 }
