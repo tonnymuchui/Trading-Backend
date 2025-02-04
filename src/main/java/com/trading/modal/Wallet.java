@@ -5,13 +5,28 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 
-@Data
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.antlr.v4.runtime.misc.NotNull;
+
+import java.math.BigDecimal;
+
 @Entity
+@Table(name = "wallets")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class Wallet {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @OneToOne
     private User user;
-    private BigDecimal balance;
+
+
+    private BigDecimal balance = BigDecimal.ZERO;
 }
