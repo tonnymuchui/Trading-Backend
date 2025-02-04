@@ -1,84 +1,100 @@
 package com.trading.modal;
 
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.Date;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @Entity
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+@Table(name = "coins")
 public class Coin {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
+    @Id
+    @JsonProperty("id")
+    private String id;
+
+    @JsonProperty("symbol")
     private String symbol;
+
+    @JsonProperty("name")
     private String name;
+
+    @JsonProperty("image")
     private String image;
 
-    @Column(name = "current_price", precision = 19, scale = 4)
+    @JsonProperty("current_price")
     private double currentPrice;
 
-    @Column(name = "market_cap", precision = 19, scale = 2)
-    private BigDecimal marketCap;
+    @JsonProperty("market_cap")
+    private long marketCap;
 
-    private Integer marketCapRank;
+    @JsonProperty("market_cap_rank")
+    private int marketCapRank;
 
-    @Column(name = "fully_diluted_valuation", precision = 19, scale = 2)
-    private BigDecimal fullyDilutedValuation;
+    @JsonProperty("fully_diluted_valuation")
+    private long fullyDilutedValuation;
 
-    @Column(name = "total_volume", precision = 19, scale = 2)
-    private BigDecimal totalVolume;
+    @JsonProperty("total_volume")
+    private long totalVolume;
 
-    @Column(name = "high_24h", precision = 19, scale = 4)
-    private BigDecimal high24h;
+    @JsonProperty("high_24h")
+    private double high24h;
 
-    @Column(name = "low_24h", precision = 19, scale = 4)
-    private BigDecimal low24h;
+    @JsonProperty("low_24h")
+    private double low24h;
 
-    @Column(name = "price_change_24h", precision = 19, scale = 4)
-    private BigDecimal priceChange24h;
+    @JsonProperty("price_change_24h")
+    private double priceChange24h;
 
-    @Column(name = "price_change_percentage_24h", precision = 5, scale = 2)
-    private BigDecimal priceChangePercentage24h;
+    @JsonProperty("price_change_percentage_24h")
+    private double priceChangePercentage24h;
 
-    @Column(name = "market_cap_change_24h", precision = 19, scale = 2)
-    private BigDecimal marketCapChange24h;
+    @JsonProperty("market_cap_change_24h")
+    private long marketCapChange24h;
 
-    @Column(name = "market_cap_change_percentage_24h", precision = 5, scale = 2)
-    private BigDecimal marketCapChangePercentage24h;
+    @JsonProperty("market_cap_change_percentage_24h")
+    private double marketCapChangePercentage24h;
 
-    @Column(name = "circulating_supply", precision = 19, scale = 4)
-    private BigDecimal circulatingSupply;
+    @JsonProperty("circulating_supply")
+    private long circulatingSupply;
 
-    @Column(name = "total_supply", precision = 19, scale = 4)
-    private BigDecimal totalSupply;
+    @JsonProperty("total_supply")
+    private long totalSupply;
 
-    @Column(name = "max_supply", precision = 19, scale = 4)
-    private BigDecimal maxSupply;
+    @JsonProperty("max_supply")
+    private long maxSupply;
 
-    @Column(name = "ath", precision = 19, scale = 4)
-    private BigDecimal ath;
+    @JsonProperty("ath")
+    private double ath;
 
-    @Column(name = "ath_change_percentage", precision = 5, scale = 2)
-    private BigDecimal athChangePercentage;
+    @JsonProperty("ath_change_percentage")
+    private double athChangePercentage;
 
-    private LocalDateTime athDate;
+    @JsonProperty("ath_date")
+    private Date athDate;
 
-    @Column(name = "atl", precision = 19, scale = 4)
-    private BigDecimal atl;
+    @JsonProperty("atl")
+    private double atl;
 
-    @Column(name = "atl_change_percentage", precision = 5, scale = 2)
-    private BigDecimal atlChangePercentage;
+    @JsonProperty("atl_change_percentage")
+    private double atlChangePercentage;
 
-    private LocalDateTime atlDate;
+    @JsonProperty("atl_date")
+    private Date atlDate;
+
+    @JsonProperty("roi")
+    @JsonIgnore
     private String roi;
-    private LocalDateTime lastUpdated;
+
+    @JsonProperty("last_updated")
+    private Date lastUpdated;
 }
