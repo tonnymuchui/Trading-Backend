@@ -1,12 +1,18 @@
 package com.trading.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuthResponse {
-    private String token;
+
+    private String jwt;
     private boolean status;
     private String message;
-    private boolean isTwoFactorAuthenticated;
-    private String Session;
+    private boolean isTwoFactorAuthEnabled=false;
+    private String session;
+
 }
