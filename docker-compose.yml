@@ -1,0 +1,14 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: trading
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Muchui22$$
+      MYSQL_DATABASE: trading
+      MYSQL_USER: root
+      MYSQL_PASSWORD: Muchui22$$
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data:/data/db
