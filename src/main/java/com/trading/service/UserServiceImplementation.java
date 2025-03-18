@@ -16,13 +16,15 @@ import java.util.Optional;
 @Service
 public class UserServiceImplementation implements UserService {
 
-	@Autowired
 	private UserRepository userRepository;
+	private PasswordEncoder passwordEncoder;
 
 	@Autowired
-	private PasswordEncoder passwordEncoder;
-	
-	
+	public UserServiceImplementation(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+		this.userRepository = userRepository;
+		this.passwordEncoder = passwordEncoder;
+	}
+
 	@Override
 	public User findUserProfileByJwt(String jwt) throws UserException {
 		String email= JwtProvider.getEmailFromJwtToken(jwt);
