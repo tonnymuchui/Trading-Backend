@@ -14,6 +14,7 @@ import com.trading.modal.PaymentOrder;
 import com.trading.modal.User;
 import com.trading.repository.PaymentOrderRepository;
 import com.trading.response.PaymentResponse;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -138,6 +139,8 @@ public class PaymentServiceImpl implements PaymentService{
 
             System.out.println("Error creating payment link: " + e.getMessage());
             throw new RazorpayException(e.getMessage());
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
         }
     }
 
