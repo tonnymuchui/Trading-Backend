@@ -31,33 +31,28 @@ import java.io.IOException;
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
     private UserRepository userRepository;
-    @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private CustomeUserServiceImplementation customUserDetails;
-
-    @Autowired
     private UserService userService;
-
-    @Autowired
     private WatchlistService watchlistService;
-
-    @Autowired
     private WalletService walletService;
-
-    @Autowired
     private VerificationService verificationService;
-
-    @Autowired
     private TwoFactorOtpService twoFactorOtpService;
-
-    @Autowired
     private EmailService emailService;
 
-
+    @Autowired
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, CustomeUserServiceImplementation customUserDetails, UserService userService, WatchlistService watchlistService, WalletService walletService, VerificationService verificationService, TwoFactorOtpService twoFactorOtpService, EmailService emailService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.customUserDetails = customUserDetails;
+        this.userService = userService;
+        this.watchlistService = watchlistService;
+        this.walletService = walletService;
+        this.verificationService = verificationService;
+        this.twoFactorOtpService = twoFactorOtpService;
+        this.emailService = emailService;
+    }
 
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> createUserHandler(
