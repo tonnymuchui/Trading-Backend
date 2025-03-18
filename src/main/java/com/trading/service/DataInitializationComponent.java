@@ -10,19 +10,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DataInitializationComponent implements CommandLineRunner {
-
     private final UserRepository userRepository;
-
-
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     public DataInitializationComponent(UserRepository userRepository,
-                                       PasswordEncoder passwordEncoder
-                                       ) {
+                                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.passwordEncoder=passwordEncoder;
-
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -31,17 +26,16 @@ public class DataInitializationComponent implements CommandLineRunner {
     }
 
     private void initializeAdminUser() {
-        String adminUsername = "codewithzosh@gmail.com";
+        String adminUsername = "tonykanyingah@gmail.com";
 
-        if (userRepository.findByEmail(adminUsername)==null) {
+        if (userRepository.findByEmail(adminUsername) == null) {
             User adminUser = new User();
-
-            adminUser.setPassword(passwordEncoder.encode("codewithzosh"));
-            adminUser.setFullName("Code With Zosh");
+            adminUser.setPassword(passwordEncoder.encode("1234567890"));
+            adminUser.setFullName("Tonny");
             adminUser.setEmail(adminUsername);
             adminUser.setRole(USER_ROLE.ROLE_ADMIN);
-            User admin=userRepository.save(adminUser);
+            adminUser.setMobile(null); // Set mobile to null (optional)
+            userRepository.save(adminUser);
         }
     }
-
 }
