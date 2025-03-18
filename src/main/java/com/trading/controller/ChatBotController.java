@@ -4,6 +4,7 @@ import com.trading.modal.CoinDTO;
 import com.trading.request.PromptBody;
 import com.trading.response.ApiResponse;
 import com.trading.service.ChatBotService;
+import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +25,7 @@ public class ChatBotController {
     }
 
     @PostMapping("/bot")
-    public ResponseEntity<String> simpleChat(@RequestBody PromptBody promptBody){
+    public ResponseEntity<String> simpleChat(@RequestBody PromptBody promptBody) throws JSONException {
 
         String res = chatBotService.simpleChat(promptBody.getPrompt());
         return new ResponseEntity<>(res, HttpStatus.OK);

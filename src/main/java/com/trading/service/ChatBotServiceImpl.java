@@ -9,6 +9,7 @@ import com.trading.modal.CoinDTO;
 import com.trading.response.ApiResponse;
 import com.trading.response.FunctionResponse;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -305,7 +306,7 @@ String body="{\n" +
     }
 
     @Override
-    public String simpleChat(String prompt) {
+    public String simpleChat(String prompt) throws JSONException {
 
         String GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + API_KEY;
 
