@@ -11,10 +11,12 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class EmailService {
-
-    @Autowired
     private JavaMailSender javaMailSender;
 
+    @Autowired
+    public EmailService(JavaMailSender javaMailSender) {
+        this.javaMailSender = javaMailSender;
+    }
 
     public void sendVerificationOtpEmail(String userEmail, String otp) throws MessagingException, MailSendException {
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
