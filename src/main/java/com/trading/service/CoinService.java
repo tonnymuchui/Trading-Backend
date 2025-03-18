@@ -2,11 +2,12 @@ package com.trading.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.trading.modal.Coin;
+import com.trading.modal.CoinDTO;
 
 import java.util.List;
 
 public interface CoinService {
-    List<Coin> getCoinList(int page) throws Exception;
+    List<CoinDTO> getCoinList(int page) throws Exception;
     String getMarketChart(String coinId,int days) throws Exception;
     String getCoinDetails(String coinId) throws JsonProcessingException;
 
