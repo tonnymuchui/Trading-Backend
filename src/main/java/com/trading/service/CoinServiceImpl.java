@@ -1,219 +1,116 @@
 package com.trading.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trading.modal.Coin;
+import com.trading.modal.CoinDTO;
 import com.trading.repository.CoinRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.RestTemplate;
-
 
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
-public class CoinServiceImpl implements CoinService{
+public class CoinServiceImpl implements CoinService {
+
     @Autowired
     private CoinRepository coinRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CoinGeckoClient coinGeckoClient; // Use Feign Client
 
     @Value("${coingecko.api.key}")
     private String API_KEY;
 
-
-
     @Override
-    public List<Coin> getCoinList(int page) throws Exception {
-        String url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&per_page=10&page="+page;
-
-
-        RestTemplate restTemplate = new RestTemplate();
+    @Cacheable(value = "coinList", key = "#page")
+    public List<CoinDTO> getCoinList(int page) throws Exception {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-cg-demo-api-key", API_KEY);
-
-
-            HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            System.out.println(response.getBody());
-            List<Coin> coins = objectMapper.readValue(response.getBody(), new TypeReference<List<Coin>>() {});
-
-            return coins;
-
-        } catch (HttpClientErrorException | HttpServerErrorException | JsonProcessingException e) {
-            System.err.println("Error: " + e);
-            // Handle error accordingly
-            throw new Exception("please wait for time because you are using free plan");
+            return coinGeckoClient.getCoinList(API_KEY, "usd", 10, page);
+        } catch (Exception e) {
+            log.error("Error fetching coin list: ", e);
+            throw new Exception("Please wait for some time because you are using the free plan.");
         }
-
     }
 
     @Override
+    @Cacheable(value = "marketChart", key = "#coinId + '-' + #days")
     public String getMarketChart(String coinId, int days) throws Exception {
-        String url = "https://api.coingecko.com/api/v3/coins/"+coinId+"/market_chart?vs_currency=usd&days="+days;
-
-        RestTemplate restTemplate = new RestTemplate();
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-cg-demo-api-key", API_KEY);
-
-            HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            return response.getBody();
-
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.err.println("Error: " + e);
-            // Handle error accordingly
-//            return null;
-            throw new Exception("you are using free plan");
-        }
-
-    }
-
-    private double convertToDouble(Object value) {
-        if (value instanceof Integer) {
-            return ((Integer) value).doubleValue();
-        } else if (value instanceof Long) {
-            return ((Long) value).doubleValue();
-        } else if (value instanceof Double) {
-            return (Double) value;
-        } else {
-            throw new IllegalArgumentException("Unsupported data type: " + value.getClass().getName());
+            return coinGeckoClient.getMarketChart(API_KEY, coinId, "usd", days);
+        } catch (Exception e) {
+            log.error("Error fetching market chart: ", e);
+            throw new Exception("You are using the free plan.");
         }
     }
 
     @Override
+    @Cacheable(value = "coinDetails", key = "#coinId")
     public String getCoinDetails(String coinId) throws JsonProcessingException {
-
-        String baseUrl ="https://api.coingecko.com/api/v3/coins/"+coinId;
-
-        System.out.println("------------------ get coin details base url "+baseUrl);
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("x-cg-demo-api-key", API_KEY);
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.GET, entity, String.class);
-
-//        Coin coins = objectMapper.readValue(response.getBody(), new TypeReference<>() {
-//        });
-//        coinRepository.save(coins);
-        JsonNode jsonNode = objectMapper.readTree(response.getBody());
-        jsonNode.get("image").get("large");
-        System.out.println(jsonNode.get("image").get("large"));
-
-        Coin coin = new Coin();
-
-        coin.setId(jsonNode.get("id").asText());
-        coin.setSymbol(jsonNode.get("symbol").asText());
-        coin.setName(jsonNode.get("name").asText());
-        coin.setImage(jsonNode.get("image").get("large").asText());
-
-        JsonNode marketData = jsonNode.get("market_data");
-
-        coin.setCurrentPrice(marketData.get("current_price").get("usd").asDouble());
-        coin.setMarketCap(marketData.get("market_cap").get("usd").asLong());
-        coin.setMarketCapRank(jsonNode.get("market_cap_rank").asInt());
-        coin.setTotalVolume(marketData.get("total_volume").get("usd").asLong());
-        coin.setHigh24h(marketData.get("high_24h").get("usd").asDouble());
-        coin.setLow24h(marketData.get("low_24h").get("usd").asDouble());
-        coin.setPriceChange24h(marketData.get("price_change_24h").asDouble());
-        coin.setPriceChangePercentage24h(marketData.get("price_change_percentage_24h").asDouble());
-        coin.setMarketCapChange24h(marketData.get("market_cap_change_24h").asLong());
-        coin.setMarketCapChangePercentage24h(marketData.get("market_cap_change_percentage_24h").asDouble());
-        coin.setCirculatingSupply(marketData.get("circulating_supply").asLong());
-        coin.setTotalSupply(marketData.get("total_supply").asLong());
-
-        coinRepository.save(coin);
-        return response.getBody();
-    }
-
-    @Override
-    public Coin findById(String coinId) throws Exception{
-        Optional<Coin> optionalCoin = coinRepository.findById(Long.valueOf(coinId));
-        if(optionalCoin.isEmpty()) throw new Exception("invalid coin id");
-        return  optionalCoin.get();
-    }
-
-    @Override
-    public String searchCoin(String keyword) {
-        String baseUrl ="https://api.coingecko.com/api/v3/search?query="+keyword;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("x-cg-demo-api-key", API_KEY);
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.GET, entity, String.class);
-
-        System.out.println(response.getBody());
-
-        return response.getBody();
-    }
-
-    @Override
-    public String getTop50CoinsByMarketCapRank() {
-        String url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&page=1&per_page=50";
-
-        RestTemplate restTemplate = new RestTemplate();
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-cg-demo-api-key", API_KEY);
-
-            HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            return response.getBody();
-
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.err.println("Error: " + e);
-            // Handle error accordingly
-            return null;
+        // Check if data exists in the database
+        Optional<Coin> coinOptional = coinRepository.findById(Long.valueOf(coinId));
+        if (coinOptional.isPresent()) {
+            return objectMapper.writeValueAsString(coinOptional.get());
         }
 
+        // Fetch data from the API
+        String response = coinGeckoClient.getCoinDetails(API_KEY, coinId);
+        Coin coin = objectMapper.readValue(response, Coin.class);
+
+        // Save to the database
+        coinRepository.save(coin);
+
+        return response;
     }
 
     @Override
-    public String getTreadingCoins() {
-        String url = "https://api.coingecko.com/api/v3/search/trending";
+    public Coin findById(String coinId) throws Exception {
+        Optional<Coin> optionalCoin = coinRepository.findById(Long.valueOf(coinId));
+        if (optionalCoin.isEmpty()) {
+            throw new Exception("Invalid coin id");
+        }
+        return optionalCoin.get();
+    }
 
-        RestTemplate restTemplate = new RestTemplate();
+    @Override
+    @Cacheable(value = "searchCoin", key = "#keyword")
+    public String searchCoin(String keyword) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("x-cg-demo-api-key", API_KEY);
+            return coinGeckoClient.searchCoin(API_KEY, keyword);
+        } catch (Exception e) {
+            log.error("Error searching coin: ", e);
+            return null; // Or return a default response
+        }
+    }
 
-            HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
+    @Override
+    @Cacheable(value = "top50Coins")
+    public String getTop50CoinsByMarketCapRank() {
+        try {
+            return coinGeckoClient.getTop50CoinsByMarketCapRank(API_KEY, "usd", 50, 1);
+        } catch (Exception e) {
+            log.error("Error fetching top 50 coins: ", e);
+            return null; // Or return a default response
+        }
+    }
 
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-
-            return response.getBody();
-
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            System.err.println("Error: " + e);
-            // Handle error accordingly
-            return null;
+    @Override
+    @Cacheable(value = "trendingCoins")
+    public String getTreadingCoins() {
+        try {
+            return coinGeckoClient.getTrendingCoins(API_KEY);
+        } catch (Exception e) {
+            log.error("Error fetching trending coins: ", e);
+            return null; // Or return a default response
         }
     }
 }
